@@ -1,6 +1,7 @@
 #include <iostream>
 #include <vector>
 #include <queue>
+#include <map>
 #include <cstring>
 #include <cctype>
 #include <utility>
@@ -26,24 +27,14 @@ private:
         }
     }
 public:
-    Bitmap() : M(NULL), N(0), _sz(0) {
-        init(8);
-    }
-
+    Bitmap() : M(NULL), N(0), _sz(0) { init(8); }
     ~Bitmap() {
-        if (M != NULL) {
-            delete[] M;
-            M = NULL;
-        }
-        _sz = 0;
-        N = 0;
+        if (M != NULL) { delete[] M; M = NULL; }
+        _sz = 0; N = 0;
     }
 
     void init(Rank n) {
-        if (M != NULL) {
-            delete[] M;
-            M = NULL;
-        }
+        if (M != NULL) delete[] M;
         N = (n + 7) / 8;
         M = new unsigned char[N];
         memset(M, 0, N);
@@ -75,45 +66,23 @@ public:
         if (M == NULL) return NULL;
         char* s = new char[n + 1];
         memset(s, 0, n + 1);
-        for (Rank i = 0; i < n; i++) {
+        for (Rank i = 0; i < n; i++)
             s[i] = test(i) ? '1' : '0';
-        }
         s[n] = '\0';
         return s;
     }
 };
 
-class BinTree {
-public:
-    pair<char, int> data;
-    BinTree* left;
-    BinTree* right;
-    BinTree* parent;
-
-    BinTree(char c = '\0', int w = 0) 
-        : data(make_pair(c, w)), left(NULL), right(NULL), parent(NULL) {}
-    
-    virtual ~BinTree() {
-        if (left != NULL) {
-            delete left;
-            left = NULL;
-        }
-        if (right != NULL) {
-            delete right;
-            right = NULL;
-        }
-        parent = NULL;
-    }
-};
-
-struct HuffNode : public BinTree {
+struct HuffNode {
+    char data;
     int weight;
+    HuffNode *left, *right, *parent;
 
-    HuffNode(char c = '\0', int w = 0) : BinTree(c, w), weight(w) {}
+    HuffNode(char c = '\0', int w = 0) 
+        : data(c), weight(w), left(NULL), right(NULL), parent(NULL) {}
 
     struct Compare {
         bool operator()(const HuffNode* a, const HuffNode* b) {
-            if (a == NULL || b == NULL) return false;
             return a->weight > b->weight;
         }
     };
@@ -126,27 +95,10 @@ private:
 public:
     HuffCode() : length(0) {}
     HuffCode(const HuffCode& other) {
-        this->length = other.length;
-        for (int i = 0; i < other.length; i++) {
-            if (other.bits.test(i)) {
-                this->bits.set(i);
-            } else {
-                this->bits.clear(i);
-            }
-        }
-    }
-    HuffCode& operator=(const HuffCode& other) {
-        if (this == &other) return *this;
-        this->length = other.length;
-        for (int i = 0; i < this->length; i++) {
-            this->bits.clear(i);
-        }
-        for (int i = 0; i < other.length; i++) {
-            if (other.bits.test(i)) {
-                this->bits.set(i);
-            }
-        }
-        return *this;
+        length = other.length;
+        for (int i = 0; i < length; i++)
+            if (other.bits.test(i)) bits.set(i);
+            else bits.clear(i);
     }
 
     void appendBit(bool isOne) {
@@ -157,10 +109,7 @@ public:
 
     friend ostream& operator<<(ostream& os, const HuffCode& code) {
         char* s = code.bits.bits2string(code.length);
-        if (s != NULL) {
-            os << s;
-            delete[] s;
-        }
+        if (s != NULL) { os << s; delete[] s; }
         return os;
     }
 
@@ -171,67 +120,30 @@ public:
 struct NodeCode {
     HuffNode* node;
     HuffCode code;
-    NodeCode(HuffNode* n = NULL, const HuffCode& c = HuffCode()) {
-        node = n;
-        code = c;
-    }
+    NodeCode(HuffNode* n = NULL, const HuffCode& c = HuffCode()) 
+        : node(n), code(c) {}
 };
+
 class HuffmanCoder {
 private:
     HuffNode* root;
-    vector<int> freqTable;
-    vector<HuffCode> codeTable;
+    map<char, int> freqMap;
+    map<char, HuffCode> codeMap;
 
-    vector<int> countFreq(const string& text) {
-        vector<int> freq(26, 0);
-        if (text.empty()) {
-            freq['d'-'a'] = 5;
-            freq['r'-'a'] = 3;
-            freq['e'-'a'] = 8;
-            freq['a'-'a'] = 10;
-            freq['m'-'a'] = 2;
-            freqTable = freq;
-            return freq;
-        }
-
+    void countFrequency(const string& text) {
+        freqMap.clear();
         for (size_t i = 0; i < text.size(); i++) {
             char c = text[i];
-            if (isalpha(c)) {
-                char lowerC = tolower(c);
-                freq[lowerC - 'a']++;
-            }
+            freqMap[c]++;
         }
-
-        bool allZero = true;
-        for (int i = 0; i < 26; i++) {
-            if (freq[i] > 0) {
-                allZero = false;
-                break;
-            }
-        }
-        if (allZero) {
-            freq['d'-'a'] = 5;
-            freq['r'-'a'] = 3;
-            freq['e'-'a'] = 8;
-            freq['a'-'a'] = 10;
-            freq['m'-'a'] = 2;
-        }
-
-        freqTable = freq;
-        return freq;
+        cout << "[ç»Ÿè®¡å®Œæˆ] å…± " << freqMap.size() << " ç§ä¸åŒå­—ç¬¦" << endl;
     }
-
-    void buildTree(const vector<int>& freq) {
+    void buildTree() {
         priority_queue<HuffNode*, vector<HuffNode*>, HuffNode::Compare> pq;
 
-        int leafCount = 0;
-        for (int i = 0; i < 26; i++) {
-            if (freq[i] > 0) {
-                pq.push(new HuffNode('a' + i, freq[i]));
-                leafCount++;
-            }
+        for (map<char, int>::iterator it = freqMap.begin(); it != freqMap.end(); ++it) {
+            pq.push(new HuffNode(it->first, it->second));
         }
-        cout << "[ÈÕÖ¾] Ò¶×Ó½ÚµãÊýÁ¿£º" << leafCount << endl;
 
         while (pq.size() > 1) {
             HuffNode* left = pq.top(); pq.pop();
@@ -247,11 +159,12 @@ private:
         }
 
         root = pq.empty() ? NULL : pq.top();
-        cout << "[ÈÕÖ¾] HuffmanÊ÷¸ù½Úµã£º" << (root == NULL ? "NULL" : "Õý³£") << endl;
+        cout << "[æ ‘æž„å»ºå®Œæˆ] Huffmanæ ‘æ ¹èŠ‚ç‚¹" << (root ? "å­˜åœ¨" : "ä¸å­˜åœ¨") << endl;
     }
-
-    void genCode() {
+    void generateCodes() {
+        codeMap.clear();
         if (root == NULL) return;
+
         queue<NodeCode> q;
         q.push(NodeCode(root, HuffCode()));
 
@@ -261,96 +174,98 @@ private:
             HuffCode code = current.code;
 
             if (node->left == NULL && node->right == NULL) {
-                char c = node->data.first;
-                codeTable[c - 'a'] = code;
-                cout << "[ÈÕÖ¾] Éú³É×Ö·û '" << c << "' ±àÂë£º" << code << endl;
+                codeMap[node->data] = code;
                 continue;
             }
 
             if (node->left != NULL) {
                 HuffCode leftCode = code;
                 leftCode.appendBit(false);
-                q.push(NodeCode((HuffNode*)node->left, leftCode));
+                q.push(NodeCode(node->left, leftCode));
             }
             if (node->right != NULL) {
                 HuffCode rightCode = code;
                 rightCode.appendBit(true);
-                q.push(NodeCode((HuffNode*)node->right, rightCode));
+                q.push(NodeCode(node->right, rightCode));
             }
         }
     }
 
 public:
-    HuffmanCoder(const string& text = "") {
-        codeTable.resize(26);
-        freqTable.resize(26, 0);
+    HuffmanCoder(const string& text) {
         root = NULL;
-        vector<int> freq = countFreq(text);
-        buildTree(freq);
-        genCode();
+        countFrequency(text);
+        buildTree();
+        generateCodes();
     }
 
     ~HuffmanCoder() {
-        if (root != NULL) {
-            delete root;
-            root = NULL;
+        if (root == NULL) return;
+        queue<HuffNode*> q;
+        q.push(root);
+        while (!q.empty()) {
+            HuffNode* node = q.front(); q.pop();
+            if (node->left != NULL) q.push(node->left);
+            if (node->right != NULL) q.push(node->right);
+            delete node;
         }
+        root = NULL;
     }
 
-    HuffCode encode(const string& word) {
+    void printTables() {
+        cout << "\n===== å­—ç¬¦é¢‘çŽ‡è¡¨ =====" << endl;
+        for (map<char, int>::iterator it = freqMap.begin(); it != freqMap.end(); ++it) {
+            cout << "å­—ç¬¦: '";
+            if (it->first == ' ') cout << "ç©ºæ ¼";
+            else cout << it->first;
+            cout << "'\té¢‘çŽ‡: " << it->second << endl;
+        }
+
+        cout << "\n===== Huffmanç¼–ç è¡¨ =====" << endl;
+        for (map<char, HuffCode>::iterator it = codeMap.begin(); it != codeMap.end(); ++it) {
+            cout << "å­—ç¬¦: '";
+            if (it->first == ' ') cout << "ç©ºæ ¼";
+            else cout << it->first;
+            cout << "'\tç¼–ç : " << it->second 
+                 << "\té•¿åº¦: " << it->second.getLength() << endl;
+        }
+    }
+    HuffCode encodeWord(const string& word) {
         HuffCode res;
-        cout << "[ÈÕÖ¾] ±àÂëµ¥´Ê£º" << word << endl;
+        cout << "\n[æ—¥å¿—] ç¼–ç å•è¯ï¼š" << word << endl;
         for (size_t i = 0; i < word.size(); i++) {
             char c = word[i];
-            if (!isalpha(c)) continue;
-            int idx = tolower(c) - 'a';
-            if (idx < 0 || idx >= 26) continue;
-            if (codeTable[idx].getLength() == 0) {
-                cout << "[¾¯¸æ] ×Ö·û '" << c << "' ÎÞ±àÂë£¡" << endl;
+            if (codeMap.find(c) == codeMap.end()) {
+                cout << "[è­¦å‘Š] å­—ç¬¦ '" << c << "' ä¸åœ¨ç¼–ç è¡¨ä¸­ï¼Œè·³è¿‡" << endl;
                 continue;
             }
-            char* s = codeTable[idx].getBits().bits2string(codeTable[idx].getLength());
-            if (s == NULL) continue;
-            for (int j = 0; j < codeTable[idx].getLength(); j++) {
-                res.appendBit(s[j] == '1');
+            HuffCode charCode = codeMap[c];
+            char* bits = charCode.getBits().bits2string(charCode.getLength());
+            if (bits != NULL) {
+                for (int j = 0; j < charCode.getLength(); j++) {
+                    res.appendBit(bits[j] == '1');
+                }
+                delete[] bits;
             }
-            delete[] s;
         }
         return res;
     }
-
-    void printTable() {
-        cout << "\n===== Huffman±àÂë±í =====" << endl;
-        cout << "×Ö·û\tÆµÂÊ\t±àÂë" << endl;
-        cout << "------------------------" << endl;
-        int count = 0;
-        for (int i = 0; i < 26; i++) {
-            if (codeTable[i].getLength() > 0) {
-                char c = 'a' + i;
-                cout << c << "\t" << freqTable[i] << "\t" << codeTable[i] << endl;
-                count++;
-            }
-        }
-        if (count == 0) {
-            cout << "£¨ÎÞÓÐÐ§±àÂë£©" << endl;
-        }
-        cout << "========================" << endl;
-        cout.flush();
-    }
 };
+
 int main() {
-    ios::sync_with_stdio(true);
-    cin.tie(NULL);
+    string text = 
+        "I am happy to join with you today in what will go down in history as the greatest demonstration for freedom in the history of our nation.\n"
+        "Five score years ago, a great American, in whose symbolic shadow we stand today, signed the Emancipation Proclamation. This momentous decree came as a great beacon light of hope to millions of Negro slaves, who had been seared in the flames of withering injustice. It came as a joyous day-break to end the long night of their captivity.";
 
-    HuffmanCoder coder;
-    coder.printTable();
-    
+    HuffmanCoder coder(text);
+    coder.printTables();
     string word = "dream";
-    HuffCode code = coder.encode(word);
-    cout << "\n×îÖÕ½á¹û£º" << endl;
-    cout << "µ¥´Ê \"" << word << "\" µÄHuffman±àÂë£º" << code << endl;
-    cout << "±àÂë³¤¶È£º" << code.getLength() << " ±ÈÌØ" << endl;
+    HuffCode wordCode = coder.encodeWord(word);
+    cout << "\næœ€ç»ˆç»“æžœï¼š" << endl;
+    cout << "å•è¯ \"" << word << "\" çš„Huffmanç¼–ç ï¼š" << wordCode << endl;
+    cout << "ç¼–ç é•¿åº¦ï¼š" << wordCode.getLength() << " æ¯”ç‰¹" << endl;
 
-    cout.flush();
+    cout << endl;
+    system("pause");
     return 0;
 }
